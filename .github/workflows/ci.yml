@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-test:
+    name: lint and harness tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the pinned tools
+        env:
+          SHELLCHECK_VERSION: 0.11.0
+          SHELLCHECK_SHA256: 8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198
+        run: |
+          pip install -r requirements-dev.txt
+          curl -sSLo shellcheck.tar.xz \
+            "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
+          echo "${SHELLCHECK_SHA256}  shellcheck.tar.xz" | sha256sum -c -
+          tar -xJf shellcheck.tar.xz --strip-components=1 "shellcheck-v${SHELLCHECK_VERSION}/shellcheck"
+          sudo mv shellcheck /usr/local/bin/shellcheck
+          rm -f shellcheck.tar.xz
+
+      - name: Lint
+        run: make lint
+
+      - name: Harness tests
+        run: make test
+
+      - name: Proposal matches the repository
+        run: python scripts/check_proposal.py
+
+  analyzers:
+    name: analyzer image
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Build the analyzer image
+        run: docker build -f analyzers/Dockerfile -t c-bug-harness-analyzers .
+
+      - name: Run every analyzer on the sample
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/src" \
+            c-bug-harness-analyzers sh -c './analyzers/versions.sh && ./analyzers/test.sh'
