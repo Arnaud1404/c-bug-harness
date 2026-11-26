@@ -1,7 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # Static analysers for the CASTLE comparison, each at its latest stable release
-# on 24 November 2026. Kept apart from the gate image (../Dockerfile), which
-# stays on Ubuntu 24.04 so the v2 tags keep their results.
+# on 24 November 2026.
 # Build from the repository root: docker build -f analyzers/Dockerfile .
 
 # ubuntu:26.10, the newest release, for GCC 16.2. It is supported until
@@ -109,12 +108,11 @@ RUN python3 -m venv /opt/scanners \
  && /opt/scanners/bin/pip install --no-cache-dir -r /tmp/requirements.txt \
  && rm /tmp/requirements.txt
 
-# Runs as the caller's uid, which has no home; semgrep needs a writable $HOME.
+# Runs as the caller's uid, which has no home directory in the image.
 ENV PATH=/opt/scanners/bin:/opt/llvm/bin:/opt/cppcheck/bin:/opt/infer/bin:/opt/esbmc/bin:/opt/opam/fc/bin:$PATH \
     OCAMLPATH=/opt/opam/fc/lib \
     CAML_LD_LIBRARY_PATH=/opt/opam/fc/lib/stublibs \
-    HOME=/tmp \
-    SEMGREP_ENABLE_VERSION_CHECK=0
+    HOME=/tmp
 
 WORKDIR /src
 CMD ["./analyzers/versions.sh"]

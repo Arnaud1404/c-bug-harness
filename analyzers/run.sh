@@ -21,7 +21,6 @@ compile="${3:-gcc $base -o ${base%.c}}"
 out="$2"
 mkdir -p "$out" || exit 2
 out="$(realpath "$out")" || exit 2
-rules="$(realpath "$(dirname "$0")/../.semgrep")" || exit 2
 
 # Per tool, in seconds. ESBMC has its own 10 s budget inside this one.
 limit="${ANALYZER_TIMEOUT:-120}"
@@ -57,11 +56,6 @@ run() {
 }
 
 run flawfinder sh -c 'flawfinder --sarif --quiet "$1" > "$2"' _ "$base" "$out/flawfinder.sarif"
-
-# CASTLE ran Semgrep Pro with --config auto, which needs an account and the
-# registry. This is Semgrep CE with the repository's rules, offline.
-run semgrep semgrep --metrics=off --config "$rules/rules/" --config "$rules/local/" \
-    --sarif --output "$out/semgrep.sarif" "$base"
 
 run cppcheck cppcheck --enable=all --language=c --quiet \
     '--template={severity},{line},{cwe},{message}' --output-file="$out/cppcheck.txt" "$base"

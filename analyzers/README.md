@@ -1,6 +1,6 @@
 # analyzers/
 
-The image `c-bug-harness-analyzers` holds nine static analysis runs for the CASTLE comparison. `run.sh` runs them on one C file and keeps the raw reports. Nothing here parses or scores a finding.
+The image `c-bug-harness-analyzers` holds eight static analysis runs for the CASTLE comparison. `run.sh` runs them on one C file and keeps the raw reports. Nothing here parses or scores a finding.
 
 ```bash
 make analyzers-image                       # 6.7 GB; Frama-C and cppcheck build from source
@@ -13,12 +13,11 @@ The third argument is the program's build command, copied from the `compile` fie
 
 ## Versions
 
-Latest stable release of each tool on 24 November 2026. The base is Ubuntu 26.10 (snapshot `20261124T000000Z`), the only Ubuntu release that ships GCC 16.2. It is supported until July 2027, which covers this work. The gate image stays on 24.04 so the v2 tags keep their results.
+Latest stable release of each tool on 24 November 2026. The base is Ubuntu 26.10 (snapshot `20261124T000000Z`), the only Ubuntu release that ships GCC 16.2. It is supported until July 2027, which covers this work.
 
 | Tool | Version | Source |
 |---|---|---|
 | flawfinder | 2.0.20 | PyPI, `requirements.txt` |
-| Semgrep CE | 1.187.0 | PyPI, `requirements.txt` |
 | cppcheck | 2.22.0 | GitHub source tarball, built with the match compiler |
 | Clang static analyzer (scan-build) | 23.1.6 | LLVM release tarball, clang and scan-build only |
 | GCC `-fanalyzer` | 16.2.0 | Ubuntu 26.10 `gcc-16`, linked as `gcc` and `cc` |
@@ -38,7 +37,6 @@ Where CASTLE ran a tool, `run.sh` copies the flags from its wrapper in [CASTLE-S
 - Clang: `scan-build --keep-going` around the build command, as in CASTLE.
 - GCC: the build command plus `-Wall -Wextra -fanalyzer`, as in CASTLE. A second run, `gcc-fanalyzer-taint`, adds `-fanalyzer-checker=taint`, which CASTLE did not use and GCC leaves off by default.
 - ESBMC: `--overflow --no-unwinding-assertions --memory-leak-check --timeout 10 --multi-property --show-stacktrace`, from CASTLE's `run.py`. The wrapper's readme gives `--unwind 1 --timeout 100` instead. `run.py` is what produced the reports, so that is the version used here.
-- Semgrep: CASTLE ran Semgrep Pro with `--config auto`, which needs an account and network access to the registry. Here it is Semgrep CE with this repository's rules (`.semgrep/`), offline. Expect lower recall than CASTLE reports.
 - flawfinder: `--sarif --quiet`. CASTLE has no wrapper for it.
 - Infer: `--pulse --liveness --starvation` on the build command with `-c` appended, because Infer's link step cannot find the objects it captured. Not in CASTLE.
 - Frama-C: `-eva -then -report`. Not in CASTLE.
@@ -51,4 +49,4 @@ Of the 250 CASTLE programs, 20 link against OpenSSL, 12 against SQLite, 9 agains
 
 ## Smoke test
 
-`test.sh` runs everything on `samples/heap_oob.c`, a heap write one past the end on line 12. It requires all nine runs to finish, Infer to write a report, and ESBMC and EVA to flag line 12. On that file cppcheck also flags line 12, Semgrep flags the `malloc` on line 6, and flawfinder, Clang, GCC and Infer report nothing.
+`test.sh` runs everything on `samples/heap_oob.c`, a heap write one past the end on line 12. It requires all eight runs to finish, Infer to write a report, and ESBMC and EVA to flag line 12. On that file cppcheck also flags line 12, and flawfinder, Clang, GCC and Infer report nothing.
