@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Checks that every analyser in the image runs to completion on the sample,
 # and that ESBMC and Frama-C EVA, the two sound-ish tools, flag its line 12.
-# Usage: analyzers/test.sh   (inside c-secure-build-analyzers)
+# Usage: analyzers/test.sh   (inside c-bug-harness-analyzers)
 # Exits 1 if a check fails, 2 if the run itself cannot start.
 set -u
 

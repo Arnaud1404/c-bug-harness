@@ -1,11 +1,11 @@
 # analyzers/
 
-The image `c-secure-build-analyzers` holds nine static analysis runs for the CASTLE comparison. `run.sh` runs them on one C file and keeps the raw reports. Nothing here parses or scores a finding.
+The image `c-bug-harness-analyzers` holds nine static analysis runs for the CASTLE comparison. `run.sh` runs them on one C file and keeps the raw reports. Nothing here parses or scores a finding.
 
 ```bash
 make analyzers-image                       # 6.7 GB; Frama-C and cppcheck build from source
 make docker-analyzers                      # builds, then runs test.sh in the image
-docker run --rm -v "$PWD:/src" c-secure-build-analyzers \
+docker run --rm -v "$PWD:/src" c-bug-harness-analyzers \
     ./analyzers/run.sh FILE.c OUT/ "gcc FILE.c -o FILE -lsqlite3"
 ```
 

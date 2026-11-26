@@ -2,7 +2,7 @@
 # Checks that agy can run headless as the harness will: in a scratch
 # workspace holding only target.c and tools/, with agy-settings.json as its
 # only command allowance, no model set, JSON out.
-# Usage: agent-eval/smoke_agy.sh   (needs agy, Docker and c-secure-build-analyzers)
+# Usage: agent-eval/smoke_agy.sh   (needs agy, Docker and c-bug-harness-analyzers)
 # Exits 1 if agy fails or a check does not hold, 2 if it cannot start.
 set -u
 
@@ -18,7 +18,7 @@ settings="$here/agy-settings.json"
 if pwd -W > /dev/null 2>&1; then
     settings="$(cd "$here" && pwd -W)/agy-settings.json"
 fi
-export C_SECURE_BUILD="$here/.."
+export HARNESS_REPO="$here/.."
 
 prompt='Run the shell command "bash tools/run_analyzers.sh" exactly once, with no
 other command. Then read analyzers-out/esbmc.log and reply with one line:

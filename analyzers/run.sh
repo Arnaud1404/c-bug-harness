@@ -5,7 +5,7 @@
 # Flags follow the CASTLE wrappers (CASTLE-Source, wrappers/*/run.py) where
 # CASTLE ran the tool; analyzers/README.md lists each choice and its source.
 # Parsing and scoring happen later, so nothing here judges a finding.
-# Usage: analyzers/run.sh FILE.c OUTDIR [COMPILE]   (inside c-secure-build-analyzers)
+# Usage: analyzers/run.sh FILE.c OUTDIR [COMPILE]   (inside c-bug-harness-analyzers)
 #   COMPILE is the program's build command, as in CASTLE's "compile" field,
 #   naming the file by its basename. Default: gcc NAME.c -o NAME.
 # Exits 2 if a tool is missing or crashed or timed out, 0 otherwise.

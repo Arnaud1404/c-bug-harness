@@ -4,15 +4,15 @@
 # It takes no arguments because agy allow rules match whole command lines, so
 # one fixed line ("bash tools/run_analyzers.sh") is what the settings allow.
 # An optional ./compile file holds the program's build command (CASTLE field).
-# Needs Docker and the c-secure-build-analyzers image (make analyzers-image).
+# Needs Docker and the c-bug-harness-analyzers image (make analyzers-image).
 set -u
 
 [ -f target.c ] || { echo "no target.c in $(pwd)" >&2; exit 2; }
-image="${ANALYZERS_IMAGE:-c-secure-build-analyzers}"
+image="${ANALYZERS_IMAGE:-c-bug-harness-analyzers}"
 
 # A copy of this script in a scratch workspace finds the repository through
-# C_SECURE_BUILD; the one in agent-eval/tools/ finds it two levels up.
-repo="${C_SECURE_BUILD:-$(dirname "$0")/../..}"
+# HARNESS_REPO; the one in agent-eval/tools/ finds it two levels up.
+repo="${HARNESS_REPO:-$(dirname "$0")/../..}"
 [ -f "$repo/analyzers/run.sh" ] || { echo "no analyzers/run.sh under $repo" >&2; exit 2; }
 repo="$(cd "$repo" && pwd)" || exit 2
 here="$(pwd)"

@@ -17,7 +17,7 @@ The smoke test was run with agy 1.5.10 on Windows 11 (Git Bash, Docker Desktop) 
 - An allow rule matches the whole command line. `command(git rev-parse --short HEAD)` matched that command. `command(git rev-parse)`, `command(git rev-parse *)` and `command(git rev-parse:*)` did not match it, and only `command(*)` matched everything.
 - A denied command ends the turn: `response` comes back empty and `denied_actions` lists the command.
 
-That is why every tool takes no arguments and works on fixed names in its working directory: `target.c`, an optional `compile` file, and `analyzers-out/`. For each program, the harness will create a fresh workspace with those files and a copy of `tools/`, and set `C_SECURE_BUILD` so the copied tool can find `analyzers/run.sh`.
+That is why every tool takes no arguments and works on fixed names in its working directory: `target.c`, an optional `compile` file, and `analyzers-out/`. For each program, the harness will create a fresh workspace with those files and a copy of `tools/`, and set `HARNESS_REPO` so the copied tool can find `analyzers/run.sh`.
 
 ## Tools
 
