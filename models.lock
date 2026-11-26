@@ -1,0 +1,3 @@
+# name  url  sha256
+qwen3.5-9b https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/3885219b6810b007914f3a7950a8d1b469d598a5/Qwen3.5-9B-Q4_K_M.gguf 03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8
+gemma4-e4b https://huggingface.co/ggml-org/gemma-4-E4B-it-GGUF/resolve/8903cb408c7df39cde2ed15fac397e6d7be92951/gemma-4-E4B-it-Q4_0.gguf a555b900214b477d8880e7832e0b8925e139b0159640036b09fe472b6f2097f2

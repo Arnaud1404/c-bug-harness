@@ -1,0 +1,11 @@
+data/
+runs/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+markdown/
+proposal/*.aux
+proposal/*.fdb_latexmk
+proposal/*.fls
+proposal/*.log
+proposal/*.out
