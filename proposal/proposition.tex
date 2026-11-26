@@ -1,0 +1,255 @@
+% Proposition pour Emmanuel Fleury, revue après la réunion du 26 novembre 2026.
+% Chaque chemin cité existe dans ce dépôt : scripts/check_proposal.py le vérifie.
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\frenchsetup{AutoSpacePunctuation=false}
+\usepackage[sfdefault]{plex-sans}
+\usepackage[varqu,varl]{inconsolata}
+\usepackage[hmargin=20mm,vmargin=15mm]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc}
+\usepackage[hidelinks]{hyperref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\setlist{itemsep=2pt,topsep=3pt,leftmargin=*}
+\setlist[itemize]{label=\textbullet}
+\titleformat{\section}{\large\bfseries}{\thesection.}{6pt}{}
+\titlespacing*{\section}{0pt}{12pt}{4pt}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection.}{6pt}{}
+\titlespacing*{\subsection}{0pt}{8pt}{2pt}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+% \path de url.sty : les _ des noms de fichiers passent tels quels.
+\let\fichier\path
+
+\begin{document}
+\raggedright
+
+{\Large\bfseries Harness d'agents et analyseurs statiques pour la détection de bugs en C}\par
+\smallskip
+Proposition de travail, UE Numerics. Arnaud Gomes, M2 CSI, tutorat d'Emmanuel Fleury. 26 novembre 2026,
+revue après la réunion du même jour.\par
+Code : \url{https://github.com/Arnaud1404/c-bug-harness}, créé le 26 novembre 2026 pour ce travail. L'image des
+analyseurs vient de c-secure-build, un projet commencé le 14 août, et garde l'historique de ses commits.
+
+\section{Objectif}
+
+Mesurer, à modèle fixé, combien un harness d'agents aide un petit modèle local à trouver des bugs en C. Deux
+conditions sont comparées sur CASTLE : le modèle seul, avec le prompt de l'article, et le modèle avec le harness.
+Les analyseurs seuls servent de référence sans modèle. Pour chaque condition je relève le temps, les tokens, le
+nombre de bugs trouvés et le nombre de faux positifs.
+
+\section{Analyseurs statiques}
+
+Sept outils, huit exécutions, figés dans \fichier{analyzers/Dockerfile} (Ubuntu 26.10, dernières versions stables au
+24 novembre 2026). Les options reprennent les wrappers de CASTLE~\cite{castle} pour chaque outil que l'article a
+lancé, et \fichier{analyzers/README.md} donne la source de chaque option.
+
+\smallskip
+\begin{tabular}{@{}L{26mm}L{14mm}L{36mm}L{36mm}L{40mm}@{}}
+\toprule
+Outil & Version & Technique & Domaine & Faux positifs attendus \\
+\midrule
+Flawfinder & 2.0.20 & Cherche des noms de fonctions dangereuses & Appels comme \texttt{strcpy} ou \texttt{printf} & Élevés : ne lit pas le contexte \\
+cppcheck & 2.22.0 & Suit les valeurs dans le code (data-flow analysis) & Out-of-bounds, null pointer dereferences, fuites & 9 pour 19 vrais dans CASTLE \\
+GCC \texttt{-fanalyzer} & 16.2.0 & Parcourt les chemins d'exécution & Double free, use-after-free, fuites, null pointer dereferences & Ni sound ni complete, selon sa documentation \\
+Clang Static Analyzer & 23.1.6 & Parcourt les chemins d'exécution & Mémoire, null pointer dereferences, division par zéro & 2 pour 13 vrais dans CASTLE \\
+Infer & 1.3.0 & Trois checkers, voir~\ref{sec:infer} & Mémoire, code mort, deadlocks & Selon le checker \\
+ESBMC & 8.8 & Bounded model checking & Débordements, null pointer dereferences, fuites, overflows & 32 pour 53 vrais dans CASTLE \\
+Frama-C EVA & 33.0 & Interprétation abstraite, sound & Les erreurs à l'exécution qu'il modélise & Élevés : signale tout ce qu'il ne peut pas exclure \\
+\bottomrule
+\end{tabular}
+
+\smallskip
+Les chiffres de CASTLE viennent de versions plus anciennes des outils : ce sont des repères, pas des références.
+GCC tourne deux fois, la seconde avec \texttt{-fanalyzer-checker=taint}, que GCC laisse désactivé par défaut.
+Les commandes de compilation de CASTLE appellent \texttt{gcc} par son nom, alors que scan-build n'analyse que les
+compilations qui passent par \texttt{\$CC}. Je remplace donc \texttt{gcc} par \texttt{\$CC}, sans quoi Clang
+n'analyse rien.
+
+Semgrep est retiré. CASTLE lançait Semgrep Pro en ligne avec \texttt{-{}-config auto}, alors que Semgrep CE hors
+ligne ne cherchait que les patterns de mes propres règles. Ses résultats auraient mesuré mes règles plutôt que
+l'outil.
+
+\subsection{Les checkers d'Infer}\label{sec:infer}
+
+Infer~\cite{infer} tourne avec trois checkers, chacun activé par son option. Sa documentation les donne tous les
+trois pour C/C++/ObjC.
+\begin{itemize}
+  \item \textbf{Pulse} (\texttt{-{}-pulse}) : null pointer dereferences, use-after-free, fuites
+  (\texttt{MEMORY\_LEAK\_C}), valeurs non initialisées. Pulse ne signale une erreur que si elle se produit quelles
+  que soient les valeurs des paramètres de la fonction. Sinon l'erreur reste latente, et elle n'est signalée que
+  si un appelant remplit ses conditions~\cite{pulse}. Sur les fonctions dont il n'a pas le code, Pulse fait des
+  hypothèses optimistes, ce qui peut produire des faux négatifs comme des faux positifs.
+  \item \textbf{Liveness} (\texttt{-{}-liveness}) : un seul type, \texttt{DEAD\_STORE}, une valeur écrite puis
+  jamais lue. Une écriture morte n'est pas un bug mais du code mort, donc je la compte à part.
+  \item \textbf{Starvation} (\texttt{-{}-starvation}) : \texttt{DEADLOCK} et \texttt{STARVATION}. Il ne concerne que
+  les programmes qui prennent des verrous, soit 3 des 10 programmes de CWE-362 dans CASTLE.
+\end{itemize}
+
+\section{Harness}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  font=\small,
+  panel/.style={draw=black!65, line width=1.2pt, rounded corners=6pt, fill=black!5, inner sep=6pt},
+  tab/.style={draw=black!65, line width=1pt, rounded corners=3pt, fill=white, font=\small\bfseries, inner sep=3pt},
+  stage/.style={draw=black!70, dashed, rounded corners=4pt, fill=white, align=center, minimum height=12mm,
+                text width=18.5mm, inner sep=2pt},
+  result/.style={draw=black!70, rounded corners=3pt, align=center, inner sep=3pt},
+  arr/.style={-{Stealth[length=2.2mm]}, line width=0.9pt},
+]
+\node[stage] (prog) {Programme\\CASTLE};
+\node[stage, right=5mm of prog] (tools) {Analyseurs\\{\scriptsize 8 exécutions}};
+\node[stage, right=11mm of tools] (triage) {\textbf{triage}\\{\scriptsize 1 tour}};
+\node[stage, right=5mm of triage] (verifier) {\textbf{verifier}\\{\scriptsize 6 tours max.}};
+\node[stage, right=10mm of verifier] (checker) {\textbf{checker}\\{\scriptsize 1 tour}};
+\node[stage, right=10mm of checker] (writer) {\textbf{writer}\\{\scriptsize 1 tour}};
+\node[result, below=6mm of writer, fill=green!12] (report) {\texttt{REPORT.md}};
+\node[result, above=9mm of verifier, fill=red!10, text width=34mm] (rejected)
+  {Rejetés, avec l'étape et la raison};
+\node[result, below=6mm of verifier, fill=blue!8, text width=30mm, font=\scriptsize] (san)
+  {\texttt{build\_san}, \texttt{run\_input}\\conteneur sans réseau};
+\coordinate (top) at ($(rejected.north)+(0,5mm)$);
+
+\draw[arr] (prog) -- (tools);
+\draw[arr] (tools) -- node[below, font=\scriptsize] {findings} (triage);
+\draw[arr] (triage) -- (verifier);
+\draw[arr] (verifier.20) -- node[above, font=\scriptsize] {verdict} (checker.160);
+\draw[arr] (checker.200) -- node[below, font=\scriptsize] {retry} (verifier.340);
+\draw[arr] (checker) -- node[below, font=\scriptsize] {accept} (writer);
+\draw[arr] (writer) -- (report);
+\draw[arr, dashed] (triage.north) |- (rejected.west);
+\draw[arr, dashed] (verifier.north) -- (rejected.south);
+\draw[arr, dashed] (checker.north) |- (rejected.east);
+\draw[{Stealth[length=2mm]}-{Stealth[length=2mm]}, line width=0.7pt] (verifier) -- (san);
+
+\begin{scope}[on background layer]
+  \node[panel, fit=(prog)(tools)(triage)(verifier)(checker)(writer)(report)(rejected)(san)(top)] (box) {};
+\end{scope}
+\node[tab] at (box.north) {Une exécution du harness sur un programme};
+\end{tikzpicture}
+\par\smallskip{\small Le harness tel que dessiné le 26 novembre. Au plus 2 allers-retours entre verifier et checker par bug.}
+\end{figure}
+
+\subsection{Un agent par tâche}
+
+Chaque agent est un fichier Markdown du dossier \fichier{agents/}. Son en-tête fixe ses outils et son nombre
+maximal de tours, et le reste du fichier est son prompt. Un agent ne voit que ce que le harness lui passe : il
+ne partage ni contexte ni historique avec les autres.
+\begin{itemize}
+  \item \fichier{agents/triage.md} reçoit le programme numéroté et les findings des analyseurs. Il regroupe ceux qui
+  désignent le même bug, garde ou rejette chaque groupe avec la ligne et la raison, et peut ajouter un bug
+  qu'aucun outil n'a vu. Il n'a pas d'outil.
+  \item \fichier{agents/verifier.md} reçoit un seul bug gardé. Il compile le programme sous ASan et UBSan
+  (\texttt{build\_san}), puis le lance avec les arguments et l'entrée qu'il choisit (\texttt{run\_input}). Il
+  répond \texttt{confirmed}, \texttt{not\_triggered} ou \texttt{refuted}. Pour les CWE sans effet visible
+  à l'exécution, comme une injection SQL ou un mot de passe en dur, son prompt lui demande de le dire et de
+  juger sur le code.
+  \item \fichier{agents/checker.md} reçoit le bug, le verdict du verifier et la sortie brute de son dernier
+  lancement, telle que le harness l'a enregistrée. Il ne voit pas le raisonnement du verifier. Il répond
+  \texttt{accept}, \texttt{reject} ou \texttt{retry} avec ce qu'il faudrait essayer.
+  \item \fichier{agents/writer.md} écrit \texttt{REPORT.md} à partir des bugs acceptés et des rejets. Il ne
+  change aucun résultat, et c'est la première étape que je coupe si le temps manque.
+\end{itemize}
+
+Le checker joue le rôle d'un second avis indépendant, comme dans un LLM council. Il juge sur ce qui a réellement
+tourné, pas sur ce que le verifier en dit.
+
+\subsection{La boucle agentique}
+
+La boucle tient dans \fichier{harness/loop.py}, une centaine de lignes sans framework. Pour un agent :
+\begin{enumerate}
+  \item Le harness envoie au serveur de modèle le prompt de l'agent, la tâche et la liste de ses outils.
+  \item Le modèle répond par du texte ou demande un outil, avec ses arguments en JSON.
+  \item Le harness lance lui-même l'outil dans l'image des analyseurs, sans réseau et avec 10 secondes de limite
+  pour le programme, puis renvoie la sortie réelle au modèle. Le modèle ne lance jamais rien directement.
+  \item On recommence jusqu'à une réponse sans appel d'outil. Le dernier tour n'offre plus d'outil, donc l'agent
+  doit répondre.
+\end{enumerate}
+La boucle externe est dans \fichier{harness/pipeline.py}. Quand le checker répond \texttt{retry}, son objection
+repart au verifier, qui relance sa propre boucle. Au deuxième \texttt{retry}, le bug est rejeté. Une réponse qui
+n'est pas le JSON attendu compte comme vide. Chaque appel au modèle est enregistré avec ses tokens, son temps et
+les sorties des outils.
+
+\subsection{Modèles}
+
+Les deux modèles notés au tableau le 26 novembre : Qwen3.5 9B (quantisé Q4\_K\_M, 5,68~Go) et Gemma 4 E4B
+(Q4\_0, 4,59~Go). Ils tourneront avec llama.cpp (\texttt{llama-server}, image Docker CUDA 13, build b12767) sur
+une RTX 5060 Laptop de 8~Go, un modèle à la fois. Les fichiers sont figés par leur SHA-256 dans
+\fichier{models.lock}. Le harness ne parle qu'à l'API compatible OpenAI du serveur, donc changer de serveur revient
+à changer une URL. Gemini 4 Hydrogen ne viendra qu'ensuite, une fois mesurés les tokens qu'une exécution
+consomme en local.
+
+\section{Benchmark}\label{sec:bench}
+
+\textbf{CASTLE}~\cite{castle} (ELTE, licence MIT), au commit \texttt{c7391c9} : 250 programmes C compilables, 10
+par CWE pour 25 CWE, dont 150 vulnérables et 100 sains. La ligne du bug est dans les métadonnées, pas dans le
+code. La version source de CASTLE marque cette ligne par un commentaire \texttt{\{!LINE\}}, mais la version
+publiée l'enlève, comme l'en-tête du fichier.
+
+Le score reprend le notebook de l'article (\fichier{harness/castle.py}). Un programme vulnérable est trouvé si un
+finding tombe sur une ligne du bug ou porte une CWE apparentée. Il rapporte 5 points, chaque finding en trop
+retire 1 point, et un programme sain sans finding rapporte 2 points. Un bonus s'ajoute selon le rang de la CWE
+dans le Top 25 de MITRE. Le notebook l'accorde aussi aux programmes non trouvés dès qu'un premier vrai positif est
+compté. Je garde ce calcul pour rester comparable à l'article, et je donne aussi precision et recall.
+
+CrashBench et SWE-bench, envisagés dans la version précédente, sont écartés : le schéma du 26 novembre ne garde que CASTLE.
+
+\section{Protocole}\label{sec:proto}
+
+\begin{itemize}
+  \item \emph{Analyseurs} : l'union des huit exécutions, une ligne comptée une fois, puis chaque outil seul.
+  \item \emph{LLM seul} : le prompt et le format de réponse de l'article CASTLE, sans outil.
+  \item \emph{LLM + harness} : le harness complet. Le score est calculé après le triage, après le verifier et
+  après le checker, ce qui donne l'apport de chaque agent avec une seule exécution.
+\end{itemize}
+
+\begin{itemize}
+  \item Mesures : pour chaque condition et chaque modèle, le temps total, les tokens de prompt et de réponse
+  relevés par \texttt{llama-server}, le nombre de bugs trouvés et de faux positifs, le score CASTLE, la precision
+  et le recall avec un intervalle de Wilson à 95\,\%. Un test de McNemar exact compare les deux conditions avec
+  modèle.
+  \item Ordre : d'abord un programme par CWE (25 programmes) pour mesurer temps et tokens, puis les 250 si le
+  temps le permet.
+  \item Contamination : CASTLE est public, donc un modèle a pu le voir à l'entraînement. Ce biais touche les
+  conditions avec modèle mais pas les analyseurs.
+  \item Variance : chaque condition tourne une fois. Une seconde exécution du harness sur les 25 programmes
+  mesure l'écart entre deux exécutions.
+\end{itemize}
+
+\section{État au 26 novembre et calendrier}
+
+Ce qui existe : l'image des analyseurs et son test (\fichier{analyzers/test.sh}, les huit exécutions finissent),
+la normalisation de leurs rapports (\fichier{harness/normalize.py}), le score CASTLE, la boucle, les deux outils, les
+quatre agents et le pipeline. Les tests de \fichier{tests/test_harness.py} tournent sans GPU : la boucle face à un
+serveur qui rejoue des réponses écrites à l'avance, et le pipeline avec ses allers-retours. Les deux outils ont
+tourné une fois sur un vrai programme de CASTLE. Aucun modèle n'a encore tourné, et \fichier{scripts/serve.sh} n'est
+pas encore testé.
+
+Début décembre : premier passage sur 25 programmes et mesure des tokens. Mi-décembre : les 250 programmes.
+Début janvier : tableaux et rédaction. Rendu visé fin janvier 2027 : un rapport d'au moins une douzaine de pages,
+le code, les prompts, les sorties brutes et les scripts qui recalculent les tableaux.
+
+Limites : 250 petits programmes ne donnent pas un taux de détection sur du code réel. Les résultats ne valent que
+pour ces deux modèles, à cette quantisation. Un modèle de 9 milliards de paramètres peut mal suivre un format
+d'appel d'outil, ce qui se verra dans la part de réponses invalides.
+
+{\small
+\begin{thebibliography}{9}\setlength{\itemsep}{0pt}
+\bibitem{castle} R.~A.~Dubniczky, K.~Z.~Horvát, T.~Bisztray et al.
+\emph{CASTLE: Benchmarking Dataset for Static Code Analyzers and LLMs towards CWE Detection}. arXiv:2503.09433,
+2025. \url{https://github.com/CASTLE-Benchmark/CASTLE-Benchmark}
+\bibitem{infer} Meta. \emph{Infer 1.3.0, documentation des checkers}. \url{https://fbinfer.com/docs/all-checkers}
+\bibitem{pulse} Q.~L.~Le, A.~Raad, J.~Villard, J.~Berdine, D.~Dreyer, P.~W.~O'Hearn. \emph{Finding Real Bugs in
+Big Programs with Incorrectness Logic}. OOPSLA, 2022.
+\end{thebibliography}}
+
+\end{document}
