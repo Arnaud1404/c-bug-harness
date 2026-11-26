@@ -1,0 +1,197 @@
+Target: 64-bit little-endian x86_64-unknown-linux with esbmclibc
+Parsing CASTLE-416-1.c
+Converting
+WARNING: no definition for external symbol stdin declared at file /esbmc-vfs/libc/headers/stdio.h line 29 column 1
+WARNING: no definition for external symbol stdout declared at file /esbmc-vfs/libc/headers/stdio.h line 30 column 1
+WARNING: no definition for external symbol stderr declared at file /esbmc-vfs/libc/headers/stdio.h line 31 column 1
+WARNING: no definition for external symbol errno declared at file /esbmc-vfs/libc/library/stdlib.c line 21 column 1
+Generating GOTO Program
+GOTO program creation time: 0.125s
+GOTO program processing time: 0.003s
+Starting Bounded Model Checking
+Symex completed in: 0.000s (59 assignments)
+Caching time: 0.000s (removed 10 assertions)
+Slicing time: 0.000s (removed 30 assignments)
+Generated 28 VCC(s), 9 remaining after simplification (19 assignments)
+No solver specified; defaulting to bitwuzla
+Slicing time: 0.000s (removed 5 assignments)
+No solver specified; defaulting to bitwuzla
+Solving claim 'dereference failure: Incorrect alignment when accessing data object at file CASTLE-416-1.c line 18 column 5 function main' with solver Bitwuzla 0.9.0
+Encoding remaining VCC(s) using bit-vector/floating-point arithmetic
+Encoding to solver time: 0.000s
+Solving with solver Bitwuzla 0.9.0
+Runtime decision procedure: 0.000s
+Slicing time: 0.000s (removed 3 assignments)
+No solver specified; defaulting to bitwuzla
+Solving claim 'dereference failure: invalidated dynamic object at file CASTLE-416-1.c line 18 column 5 function main' with solver Bitwuzla 0.9.0
+Encoding remaining VCC(s) using bit-vector/floating-point arithmetic
+Encoding to solver time: 0.000s
+Solving with solver Bitwuzla 0.9.0
+Runtime decision procedure: 0.000s
+Slicing time: 0.000s (removed 5 assignments)
+No solver specified; defaulting to bitwuzla
+Solving claim 'dereference failure: Incorrect alignment when accessing data object at file CASTLE-416-1.c line 18 column 5 function main' with solver Bitwuzla 0.9.0
+Encoding remaining VCC(s) using bit-vector/floating-point arithmetic
+Encoding to solver time: 0.000s
+Solving with solver Bitwuzla 0.9.0
+Runtime decision procedure: 0.000s
+Slicing time: 0.000s (removed 5 assignments)
+No solver specified; defaulting to bitwuzla
+Solving claim 'dereference failure: NULL pointer at file CASTLE-416-1.c line 18 column 5 function main' with solver Bitwuzla 0.9.0
+Encoding remaining VCC(s) using bit-vector/floating-point arithmetic
+Encoding to solver time: 0.000s
+Solving with solver Bitwuzla 0.9.0
+Runtime decision procedure: 0.000s
+Slicing time: 0.000s (removed 4 assignments)
+No solver specified; defaulting to bitwuzla
+Solving claim 'dereference failure: Incorrect alignment when accessing data object at file CASTLE-416-1.c line 5 column 5 function square' with solver Bitwuzla 0.9.0
+Encoding remaining VCC(s) using bit-vector/floating-point arithmetic
+Encoding to solver time: 0.001s
+Solving with solver Bitwuzla 0.9.0
+Runtime decision procedure: 0.000s
+Slicing time: 0.000s (removed 2 assignments)
+No solver specified; defaulting to bitwuzla
+Solving claim 'dereference failure: invalidated dynamic object at file CASTLE-416-1.c line 5 column 5 function square' with solver Bitwuzla 0.9.0
+Encoding remaining VCC(s) using bit-vector/floating-point arithmetic
+Encoding to solver time: 0.001s
+Solving with solver Bitwuzla 0.9.0
+Runtime decision procedure: 0.000s
+Slicing time: 0.000s (removed 4 assignments)
+No solver specified; defaulting to bitwuzla
+Solving claim 'dereference failure: Incorrect alignment when accessing data object at file CASTLE-416-1.c line 5 column 5 function square' with solver Bitwuzla 0.9.0
+Encoding remaining VCC(s) using bit-vector/floating-point arithmetic
+Encoding to solver time: 0.000s
+Solving with solver Bitwuzla 0.9.0
+Runtime decision procedure: 0.000s
+Slicing time: 0.000s (removed 4 assignments)
+No solver specified; defaulting to bitwuzla
+Solving claim 'dereference failure: NULL pointer at file CASTLE-416-1.c line 5 column 5 function square' with solver Bitwuzla 0.9.0
+Encoding remaining VCC(s) using bit-vector/floating-point arithmetic
+Encoding to solver time: 0.000s
+Solving with solver Bitwuzla 0.9.0
+Runtime decision procedure: 0.000s
+Slicing time: 0.000s (removed 5 assignments)
+No solver specified; defaulting to bitwuzla
+Solving claim 'arithmetic overflow on mul at file CASTLE-416-1.c line 6 column 5 function square' with solver Bitwuzla 0.9.0
+Encoding remaining VCC(s) using bit-vector/floating-point arithmetic
+Encoding to solver time: 0.000s
+Solving with solver Bitwuzla 0.9.0
+Runtime decision procedure: 0.000s
+Slicing time: 0.000s (removed 4 assignments)
+No solver specified; defaulting to bitwuzla
+Solving claim 'dereference failure: Incorrect alignment when accessing data object at file CASTLE-416-1.c line 6 column 5 function square' with solver Bitwuzla 0.9.0
+Encoding remaining VCC(s) using bit-vector/floating-point arithmetic
+Encoding to solver time: 0.001s
+Solving with solver Bitwuzla 0.9.0
+Runtime decision procedure: 0.000s
+Slicing time: 0.000s (removed 2 assignments)
+No solver specified; defaulting to bitwuzla
+Solving claim 'dereference failure: invalidated dynamic object at file CASTLE-416-1.c line 6 column 5 function square' with solver Bitwuzla 0.9.0
+Encoding remaining VCC(s) using bit-vector/floating-point arithmetic
+Encoding to solver time: 0.000s
+Solving with solver Bitwuzla 0.9.0
+Runtime decision procedure: 0.001s
+Slicing time: 0.000s (removed 4 assignments)
+No solver specified; defaulting to bitwuzla
+Solving claim 'dereference failure: Incorrect alignment when accessing data object at file CASTLE-416-1.c line 6 column 5 function square' with solver Bitwuzla 0.9.0
+Encoding remaining VCC(s) using bit-vector/floating-point arithmetic
+Encoding to solver time: 0.000s
+Solving with solver Bitwuzla 0.9.0
+Runtime decision procedure: 0.000s
+Slicing time: 0.000s (removed 4 assignments)
+No solver specified; defaulting to bitwuzla
+Solving claim 'dereference failure: NULL pointer at file CASTLE-416-1.c line 6 column 5 function square' with solver Bitwuzla 0.9.0
+Encoding remaining VCC(s) using bit-vector/floating-point arithmetic
+Encoding to solver time: 0.000s
+Solving with solver Bitwuzla 0.9.0
+Runtime decision procedure: 0.001s
+Slicing time: 0.000s (removed 2 assignments)
+No solver specified; defaulting to bitwuzla
+Solving claim 'dereference failure: invalidated dynamic object freed at file CASTLE-416-1.c line 7 column 5 function square' with solver Bitwuzla 0.9.0
+Encoding remaining VCC(s) using bit-vector/floating-point arithmetic
+Encoding to solver time: 0.000s
+Solving with solver Bitwuzla 0.9.0
+Runtime decision procedure: 0.001s
+Slicing time: 0.000s (removed 5 assignments)
+No solver specified; defaulting to bitwuzla
+Solving claim 'dereference failure: Incorrect alignment when accessing data object at file CASTLE-416-1.c line 20 column 5 function main' with solver Bitwuzla 0.9.0
+Encoding remaining VCC(s) using bit-vector/floating-point arithmetic
+Encoding to solver time: 0.000s
+Solving with solver Bitwuzla 0.9.0
+Runtime decision procedure: 0.000s
+Slicing time: 0.000s (removed 1 assignments)
+No solver specified; defaulting to bitwuzla
+Solving claim 'dereference failure: invalidated dynamic object at file CASTLE-416-1.c line 20 column 5 function main' with solver Bitwuzla 0.9.0
+Encoding remaining VCC(s) using bit-vector/floating-point arithmetic
+Encoding to solver time: 0.000s
+Solving with solver Bitwuzla 0.9.0
+Runtime decision procedure: 0.000s
+
+[Counterexample]
+
+
+State 1 file CASTLE-416-1.c line 11 column 5 function main thread 0
+----------------------------------------------------
+  a = (signed int *)(&dynamic_1_value)
+
+State 2 file CASTLE-416-1.c line 20 column 5 function main thread 0
+----------------------------------------------------
+Violated property:
+  file CASTLE-416-1.c line 20 column 5 function main
+Stack trace:
+  main at file CASTLE-416-1.c line 10 column 1
+  dereference failure: invalidated dynamic object
+  CWE: CWE-416, CWE-825
+
+Slicing time: 0.000s (removed 5 assignments)
+No solver specified; defaulting to bitwuzla
+Solving claim 'dereference failure: Incorrect alignment when accessing data object at file CASTLE-416-1.c line 20 column 5 function main' with solver Bitwuzla 0.9.0
+Encoding remaining VCC(s) using bit-vector/floating-point arithmetic
+Encoding to solver time: 0.000s
+Solving with solver Bitwuzla 0.9.0
+Runtime decision procedure: 0.000s
+Slicing time: 0.000s (removed 5 assignments)
+No solver specified; defaulting to bitwuzla
+Solving claim 'dereference failure: NULL pointer at file CASTLE-416-1.c line 20 column 5 function main' with solver Bitwuzla 0.9.0
+Encoding remaining VCC(s) using bit-vector/floating-point arithmetic
+Encoding to solver time: 0.000s
+Solving with solver Bitwuzla 0.9.0
+Runtime decision procedure: 0.000s
+Slicing time: 0.000s (removed 0 assignments)
+No solver specified; defaulting to bitwuzla
+Solving claim 'dereference failure: forgotten memory: dynamic_1_value at file CASTLE-416-1.c line 23 column 1 function main' with solver Bitwuzla 0.9.0
+Encoding remaining VCC(s) using bit-vector/floating-point arithmetic
+Encoding to solver time: 0.000s
+Solving with solver Bitwuzla 0.9.0
+Runtime decision procedure: 0.000s
+BMC program time: 0.102s
+
+** Results:
+CASTLE-416-1.c, function main
+  PASSED       [main.heap-object-out-of-bounds.1]           line 18  dereference failure: Access to object out of bounds: heap object
+  PASSED       [main.assertion.1]                           line 18  dereference failure: Incorrect alignment when accessing data object
+  PASSED       [main.null-pointer-dereference.1]            line 18  dereference failure: NULL pointer
+  PASSED       [main.invalidated-dynamic-object.1]          line 18  dereference failure: invalidated dynamic object
+  PASSED       [main.heap-object-out-of-bounds.2]           line 20  dereference failure: Access to object out of bounds: heap object
+  PASSED       [main.assertion.2]                           line 20  dereference failure: Incorrect alignment when accessing data object
+  PASSED       [main.null-pointer-dereference.2]            line 20  dereference failure: NULL pointer
+  FAILED       [main.invalidated-dynamic-object.2]          line 20  dereference failure: invalidated dynamic object
+  PASSED       [main.memory-leak.1]                         line 23  dereference failure: forgotten memory: dynamic_1_value
+CASTLE-416-1.c, function square
+  PASSED       [square.heap-object-out-of-bounds.1]         line  5  dereference failure: Access to object out of bounds: heap object
+  PASSED       [square.assertion.1]                         line  5  dereference failure: Incorrect alignment when accessing data object
+  PASSED       [square.null-pointer-dereference.1]          line  5  dereference failure: NULL pointer
+  PASSED       [square.invalidated-dynamic-object.1]        line  5  dereference failure: invalidated dynamic object
+  PASSED       [square.arithmetic-overflow.1]               line  6  arithmetic overflow on mul
+  PASSED       [square.heap-object-out-of-bounds.2]         line  6  dereference failure: Access to object out of bounds: heap object
+  PASSED       [square.assertion.2]                         line  6  dereference failure: Incorrect alignment when accessing data object
+  PASSED       [square.null-pointer-dereference.2]          line  6  dereference failure: NULL pointer
+  PASSED       [square.invalidated-dynamic-object.2]        line  6  dereference failure: invalidated dynamic object
+  PASSED       [square.free-non-zero-offset.1]              line  7  Operand of free must have zero pointer offset
+  PASSED       [square.invalidated-dynamic-object-freed.1]  line  7  dereference failure: invalidated dynamic object freed
+
+** 1 of 20 properties failed, 19 passed
+Solver: Bitwuzla 0.9.0 • Decision procedure total time: 0.053s • Avg: 0.002s/property
+
+VERIFICATION FAILED
+ESBMC version 8.8.0 64-bit x86_64 linux

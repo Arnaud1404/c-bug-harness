@@ -1,0 +1,4 @@
+scan-build: Using '/opt/llvm/bin/clang-23' for static analysis
+scan-build: Analysis run complete.
+scan-build: Removing directory '/tmp/scan-build-2026-11-26-190851-101-1' because it contains no reports.
+scan-build: No bugs found.

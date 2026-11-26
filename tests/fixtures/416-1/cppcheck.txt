@@ -1,0 +1,4 @@
+information,1,0,Include file: <stdio.h> not found. Please note: Standard library headers do not need to be provided to get proper results.
+information,2,0,Include file: <stdlib.h> not found. Please note: Standard library headers do not need to be provided to get proper results.
+style,4,0,The function 'square' should have static linkage since it is not used outside of its translation unit.
+information,0,0,Active checkers: 115/189 (use --checkers-report=<filename> to see details)

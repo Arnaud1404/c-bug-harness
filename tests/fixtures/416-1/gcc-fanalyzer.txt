@@ -1,0 +1,58 @@
+CASTLE-416-1.c: In function 'main':
+CASTLE-416-1.c:20:5: warning: use after 'free' of 'a' [CWE-416] [-Wanalyzer-use-after-free]
+   20 |     printf("Result: %d\n", *a);
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~
+  'main': events 1-6
+    │
+    │   10 | int main() {
+    │      |     ^~~~
+    │      |     |
+    │      |     (1) entry to 'main'
+    │   11 |     int *a = (int*) malloc(sizeof(int));
+    │      |                     ~~~~~~~~~~~~~~~~~~~
+    │      |                     |
+    │      |                     (2) allocated here
+    │   12 | 
+    │   13 |     if (a == NULL) {
+    │      |        ~
+    │      |        |
+    │      |        (3) assuming 'a' is non-NULL
+    │      |        (4) following 'false' branch (when 'a' is non-NULL)... ─>─┐
+    │      |                                                                  │
+    │......
+    │      |                                                                  │
+    │      |┌─────────────────────────────────────────────────────────────────┘
+    │   18 |│    *a = 5;
+    │      |│    ~~~~~~
+    │      |│       |
+    │      |└──────>(5) ...to here
+    │   19 |     square(a);
+    │      |     ~~~~~~~~~
+    │      |     |
+    │      |     (6) calling 'square' from 'main'
+    │
+    └──> 'square': events 7-8
+           │
+           │    4 | void square(int* a) {
+           │      |      ^~~~~~
+           │      |      |
+           │      |      (7) entry to 'square'
+           │......
+           │    7 |     free(a);
+           │      |     ~~~~~~~
+           │      |     |
+           │      |     (8) freed here
+           │
+    <──────┘
+    │
+  'main': events 9-10
+    │
+    │   19 |     square(a);
+    │      |     ^~~~~~~~~
+    │      |     |
+    │      |     (9) returning to 'main' from 'square'
+    │   20 |     printf("Result: %d\n", *a);
+    │      |     ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    │      |     |
+    │      |     (10) ⚠️  use after 'free' of 'a'; freed at (8)
+    │
