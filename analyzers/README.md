@@ -34,7 +34,7 @@ CASTLE published its figures with older releases (ESBMC 7.8, and Ubuntu 24.04 pa
 Where CASTLE ran a tool, `run.sh` copies the flags from its wrapper in [CASTLE-Source](https://github.com/CASTLE-Benchmark/CASTLE-Source) (`wrappers/<tool>/`). That keeps our per-tool numbers comparable with the paper's. The other tools use the defaults written below.
 
 - cppcheck: `--enable=all --language=c --quiet --template={severity},{line},{cwe},{message}`, as in CASTLE. CASTLE's parser then drops the `information` and `style` lines, and scoring should do the same.
-- Clang: `scan-build --keep-going` around the build command, as in CASTLE.
+- Clang: `scan-build --keep-going --use-cc=gcc` around the build command, with `gcc` replaced by `$CC`. scan-build only analyses what goes through `$CC`, and CASTLE's commands call `gcc` by name, so a plain `scan-build --keep-going gcc ...` analyses nothing.
 - GCC: the build command plus `-Wall -Wextra -fanalyzer`, as in CASTLE. A second run, `gcc-fanalyzer-taint`, adds `-fanalyzer-checker=taint`, which CASTLE did not use and GCC leaves off by default.
 - ESBMC: `--overflow --no-unwinding-assertions --memory-leak-check --timeout 10 --multi-property --show-stacktrace`, from CASTLE's `run.py`. The wrapper's readme gives `--unwind 1 --timeout 100` instead. `run.py` is what produced the reports, so that is the version used here.
 - flawfinder: `--sarif --quiet`. CASTLE has no wrapper for it.

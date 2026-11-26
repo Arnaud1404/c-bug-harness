@@ -60,7 +60,9 @@ run flawfinder sh -c 'flawfinder --sarif --quiet "$1" > "$2"' _ "$base" "$out/fl
 run cppcheck cppcheck --enable=all --language=c --quiet \
     '--template={severity},{line},{cwe},{message}' --output-file="$out/cppcheck.txt" "$base"
 
-run clang-sa sh -c 'scan-build --keep-going sh -c "$1"' _ "$compile"
+# scan-build only sees compilations that go through $CC, and the CASTLE
+# commands call gcc by name, so gcc is swapped for $CC.
+run clang-sa sh -c 'scan-build --keep-going --use-cc=gcc sh -c "\$CC ${1#gcc }"' _ "$compile"
 
 run gcc-fanalyzer sh -c '$1 -Wall -Wextra -fanalyzer 2> "$2"' _ "$compile" "$out/gcc-fanalyzer.txt"
 
