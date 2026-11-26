@@ -1,6 +1,6 @@
 # agent-eval/
 
-This directory holds the setup that lets a coding-agent CLI run the analysers as a tool. So far it covers the Antigravity CLI (`agy`), checked by one smoke test. The harness itself (agents, prompts, scoring) does not exist yet.
+This directory holds the setup that lets a coding-agent CLI run the analysers as a tool. It covers the Antigravity CLI (`agy`), checked by one smoke test. The harness in `harness/` does not use it: it runs its own loop against a local model server. This setup is kept for a later Gemini run through agy.
 
 ```bash
 make analyzers-image          # the tool runs this image
