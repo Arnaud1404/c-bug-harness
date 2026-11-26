@@ -1,0 +1,11 @@
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "N", "SIM", "C4"]
+# Explicit loops are the house style; SIM110 would turn them into any().
+ignore = ["SIM110"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
