@@ -1,8 +1,8 @@
 """Turns the raw reports of analyzers/run.sh into one list of findings.
 
 Each finding is {"tool", "line", "cwe", "severity", "message"}. cwe is 0 when
-the tool gives none. severity is kept only where a tool has one that CASTLE
-filters on (cppcheck); the others get "".
+the tool gives none. severity is kept where a tool has one that CASTLE or the
+harness filters on (cppcheck, infer-liveness); the others get "".
 """
 
 from __future__ import annotations
@@ -16,6 +16,15 @@ CWE = re.compile(r"CWE-(\d+)")
 DIAG = re.compile(r"^[^:\s]+\.c:(\d+):\d+: warning: (.*)$")
 EVA_ALARM = re.compile(r"^\[eva:alarm\] [^:]+\.c:(\d+): Warning:")
 ESBMC_FILE = re.compile(r"file \S+ line (\d+)")
+STARVATION_TYPES = {
+    "DEADLOCK",
+    "STARVATION",
+    "LOCK_CONSISTENCY_VIOLATION",
+    "STRICT_MODE_VIOLATION",
+    "ARBITRARY_CODE_EXECUTION_UNDER_LOCK",
+    "IPC_ON_UI_THREAD",
+    "REGEX_OP_ON_UI_THREAD",
+}
 
 
 def first_cwe(text: str) -> int:
@@ -60,9 +69,21 @@ def diagnostics(tool: str, path: Path) -> list[dict]:
 
 
 def infer(path: Path) -> list[dict]:
+    """Splits Infer findings by checker: pulse, starvation, and liveness.
+    DEAD_STORE gets severity 'dead_code' so bug scoring counts it separately."""
     found = []
     for bug in json.loads(path.read_text(encoding="utf-8")):
-        found.append(finding("infer", bug["line"], bug["bug_type"] + ": " + bug["qualifier"], 0))
+        bug_type = bug["bug_type"]
+        if bug_type == "DEAD_STORE":
+            tool = "infer-liveness"
+            severity = "dead_code"
+        elif bug_type in STARVATION_TYPES:
+            tool = "infer-starvation"
+            severity = ""
+        else:
+            tool = "infer-pulse"
+            severity = ""
+        found.append(finding(tool, bug["line"], bug_type + ": " + bug["qualifier"], 0, severity))
     return found
 
 
@@ -111,6 +132,19 @@ PARSERS = {
     "esbmc": ("esbmc.log", esbmc),
     "frama-c-eva": ("frama-c-eva.log", eva),
 }
+
+# Individual analyser rows printed by harness.score (infer-liveness is reported separately).
+SCORED_TOOLS = [
+    "flawfinder",
+    "cppcheck",
+    "clang-sa",
+    "gcc-fanalyzer",
+    "gcc-fanalyzer-taint",
+    "infer-pulse",
+    "infer-starvation",
+    "esbmc",
+    "frama-c-eva",
+]
 
 
 def normalize(outdir: Path) -> list[dict]:

@@ -1,8 +1,8 @@
 """Runs one condition on CASTLE programs and writes runs/<condition>/<label>/<id>.json.
 
   python -m harness.run analyzers
-  python -m harness.run llm     --label qwen3.5-9b [--per-cwe 1] [--ids 125-1 ...]
-  python -m harness.run harness --label qwen3.5-9b [--per-cwe 1] [--no-report]
+  python -m harness.run llm     --label qwen3.5-9b [--temperature 0] [--per-cwe 1] [--ids 125-1 ...]
+  python -m harness.run harness --label qwen3.5-9b [--temperature 0] [--per-cwe 1] [--no-report]
 
 A program already written is skipped, so a stopped run resumes.
 """
@@ -13,6 +13,7 @@ import argparse
 import json
 import sys
 import time
+import urllib.error
 import urllib.request
 
 from harness import castle
@@ -22,6 +23,8 @@ from harness.pipeline import run_program
 
 
 def select(tests: list[dict], per_cwe: int, ids: list[str]) -> list[dict]:
+    """Selects tests by explicit IDs or stratified per CWE (preserving the
+    60/40 vulnerable/clean split so pilots include clean programs)."""
     if ids:
         chosen = []
         for t in tests:
@@ -30,12 +33,34 @@ def select(tests: list[dict], per_cwe: int, ids: list[str]) -> list[dict]:
         return chosen
     if not per_cwe:
         return tests
-    seen: dict[int, int] = {}
-    chosen = []
+    by_cwe: dict[int, list[dict]] = {}
     for t in tests:
-        if seen.get(t["cwe"], 0) < per_cwe:
-            chosen.append(t)
-            seen[t["cwe"]] = seen.get(t["cwe"], 0) + 1
+        by_cwe.setdefault(t["cwe"], []).append(t)
+    chosen = []
+    for idx, cwe_tests in enumerate(by_cwe.values()):
+        vuln = []
+        clean = []
+        for t in cwe_tests:
+            if t["vulnerable"]:
+                vuln.append(t)
+            else:
+                clean.append(t)
+        if per_cwe == 1:
+            want_vuln = idx % 5 < 3
+            pool = vuln if want_vuln else clean
+            fallback = clean if want_vuln else vuln
+            if pool:
+                chosen.append(pool[0])
+            elif fallback:
+                chosen.append(fallback[0])
+        else:
+            want_v = min(len(vuln), max(1, round(per_cwe * 0.6)))
+            want_c = min(len(clean), per_cwe - want_v)
+            picked = vuln[:want_v] + clean[:want_c]
+            remaining = vuln[want_v:] + clean[want_c:]
+            while len(picked) < per_cwe and remaining:
+                picked.append(remaining.pop(0))
+            chosen.extend(picked)
     return chosen
 
 
@@ -46,11 +71,15 @@ def served_model() -> str:
 
 
 def union(findings: list[dict]) -> list[dict]:
-    """One finding per line across all analysers, so eight tools agreeing on a
-    line count once, as CASTLE's tool combinations do."""
-    by_line = {}
+    """One finding per line across all analysers, so eight runs agreeing on a
+    line count once, as CASTLE's tool combinations do. Prefers a finding with
+    a non-zero CWE when tools collide on the same line."""
+    by_line: dict[int, dict] = {}
     for f in findings:
-        if f["severity"].lower() in castle.RELEVANT and f["line"] not in by_line:
+        if f["severity"].lower() not in castle.RELEVANT:
+            continue
+        existing = by_line.get(f["line"])
+        if existing is None or (existing["cwe"] == 0 and f["cwe"] != 0):
             by_line[f["line"]] = f
     return list(by_line.values())
 
@@ -62,6 +91,7 @@ def main() -> int:
     parser.add_argument("--per-cwe", type=int, default=0)
     parser.add_argument("--ids", nargs="*", default=[])
     parser.add_argument("--no-report", action="store_true")
+    parser.add_argument("--temperature", type=float, default=None)
     args = parser.parse_args()
     dataset = castle.load()
     tests = select(dataset["tests"], args.per_cwe, args.ids)
@@ -74,25 +104,41 @@ def main() -> int:
         if out.exists():
             continue
         found = json.loads((RUNS / "raw" / test["id"] / "findings.json").read_text(encoding="utf-8"))
-        record = {"id": test["id"], "model": model, "trace": []}
+        record: dict = {"id": test["id"], "model": model, "temperature": args.temperature, "trace": []}
         start = time.monotonic()
         if args.condition == "analyzers":
             record["findings"] = union(found)
             record["per_tool"] = found
         elif args.condition == "llm":
             # CASTLE's own LLM run: its prompt as system message, the code fenced.
-            reply = chat([{"role": "system", "content": dataset["prompt"]},
-                          {"role": "user", "content": f"```{test['code']}\n```"}])
-            text = reply["choices"][0]["message"].get("content") or ""
-            record["trace"].append({"agent": "llm", "turn": 1, "seconds": reply["seconds"],
-                                    "model": reply.get("model"),
-                                    "prompt_tokens": reply["usage"]["prompt_tokens"],
-                                    "completion_tokens": reply["usage"]["completion_tokens"], "calls": []})
-            record["answer"] = text
-            record["findings"] = castle.parse_llm_report(test["code"], text)
+            try:
+                reply = chat([{"role": "system", "content": dataset["prompt"]},
+                              {"role": "user", "content": f"```{test['code']}\n```"}],
+                             temperature=args.temperature)
+            except urllib.error.HTTPError as exc:
+                detail = exc.read().decode("utf-8", errors="replace")[:300]
+                record["trace"].append({"agent": "llm", "turn": 1, "seconds": 0.0, "model": None,
+                                        "temperature": args.temperature, "prompt_tokens": 0,
+                                        "completion_tokens": 0, "error": f"HTTP {exc.code}: {detail}", "calls": []})
+                record["answer"] = ""
+                record["findings"] = []
+            else:
+                choice = reply["choices"][0]
+                text = choice["message"].get("content") or ""
+                usage = reply.get("usage") or {}
+                call_rec = {"agent": "llm", "turn": 1, "seconds": reply["seconds"], "model": reply.get("model"),
+                            "temperature": args.temperature, "finish_reason": choice.get("finish_reason"),
+                            "prompt_tokens": usage.get("prompt_tokens", 0),
+                            "completion_tokens": usage.get("completion_tokens", 0), "calls": []}
+                reasoning = choice["message"].get("reasoning_content")
+                if reasoning:
+                    call_rec["reasoning"] = reasoning
+                record["trace"].append(call_rec)
+                record["answer"] = text
+                record["findings"] = castle.parse_llm_report(test["code"], text)
         else:
             stages = run_program(test, found, RUNS / "work" / args.label / test["id"],
-                                 record["trace"], write_report=not args.no_report)
+                                 record["trace"], write_report=not args.no_report, temperature=args.temperature)
             record["stages"] = stages
             record["findings"] = []
             for bug in stages["checker"]:
