@@ -18,7 +18,7 @@ TEX = ROOT / "proposal" / "proposition.tex"
 # (text the proposal must contain, file that must back it, text that file must contain)
 FACTS = [
     ("6 tours max.", "agents/verifier.md", "max_turns: 6"),
-    ("Au plus 2 allers-retours", "harness/pipeline.py", "MAX_ROUNDS = 2"),
+    ("Au plus 2 passages", "harness/pipeline.py", "MAX_ROUNDS = 2"),
     ("10 secondes", "harness/tools.py", "RUN_TIMEOUT = 10"),
     ("build b12767", "scripts/serve.sh", "server-cuda13-b12767"),
     ("Q4\\_K\\_M", "models.lock", "Qwen3.5-9B-Q4_K_M.gguf"),

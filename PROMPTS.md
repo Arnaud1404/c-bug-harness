@@ -2,7 +2,7 @@
 
 These are the prompts that shaped this repository, taken from the Claude Code session. Quotes are trimmed and edited for spelling and tone, and the meaning is unchanged. The analyser image predates this repository: its commits come from c-secure-build and keep their dates.
 
-**Involvement:** the harness design comes from a whiteboard drawn with my tutor, Emmanuel Fleury, on 26 November 2026. Claude Code wrote the harness code, the agent prompts and the revised proposal. I chose the scope and the models. I have not yet reread the harness line by line.
+**Involvement:** the harness design comes from a whiteboard drawn with my tutor, Emmanuel Fleury, on 26 November 2026. Claude Code wrote the initial harness code, agent prompts and revised proposal; I chose the scope and the models. On 27 November 2026 I reviewed the harness and proposal line by line with Antigravity and fixed the checker evidence path, Infer checker split, stratified pilot selection, sanitizer runtime options, JSON parsing, scoring intervals and temperature control.
 
 ## 26 November 2026: from the whiteboard to a repository
 

@@ -49,11 +49,13 @@ scripts/fetch.sh                  # CASTLE + model files
 python -m harness.analyze         # analysers on all 250 programs -> runs/raw/
 python -m harness.run analyzers
 scripts/serve.sh qwen3.5-9b
-python -m harness.run llm     --label qwen3.5-9b --per-cwe 1
-python -m harness.run harness --label qwen3.5-9b --per-cwe 1
+python -m harness.run llm     --label qwen3.5-9b-t0 --temperature 0 --per-cwe 1
+python -m harness.run harness --label qwen3.5-9b-t0 --temperature 0 --per-cwe 1
 python -m harness.score
 python scripts/check_proposal.py
 ```
+
+`--per-cwe 1` selects a stratified 25-program pilot (one per CWE, 15 vulnerable and 10 clean). Omit `--temperature` to compare `llama-server` defaults against `--temperature 0`. Infer findings are split by checker (`infer-pulse`, `infer-starvation`), with `infer-liveness` (`DEAD_STORE`) counted separately.
 
 On Git Bash for Windows, prefix the Python commands with `MSYS_NO_PATHCONV=1` so Docker receives the mount paths unchanged.
 

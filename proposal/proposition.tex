@@ -1,4 +1,4 @@
-% Proposition pour Emmanuel Fleury, revue après la réunion du 26 novembre 2026.
+% Proposition pour Emmanuel Fleury, revue après la réunion du 26 novembre 2026 et relecture du code.
 % Chaque chemin cité existe dans ce dépôt : scripts/check_proposal.py le vérifie.
 \documentclass[11pt,a4paper]{article}
 \usepackage[T1]{fontenc}
@@ -33,8 +33,8 @@
 
 {\Large\bfseries Harness d'agents et analyseurs statiques pour la détection de bugs en C}\par
 \smallskip
-Proposition de travail, UE Numerics. Arnaud Gomes, M2 CSI, tutorat d'Emmanuel Fleury. 26 novembre 2026,
-revue après la réunion du même jour.\par
+Proposition de travail, UE Numerics. Arnaud Gomes, M2 CSI, tutorat d'Emmanuel Fleury. 27 novembre 2026,
+revue après la réunion du 26 novembre et relecture du code.\par
 Code : \url{https://github.com/Arnaud1404/c-bug-harness}, créé le 26 novembre 2026 pour ce travail. L'image des
 analyseurs vient de c-secure-build, un projet commencé le 14 août, et garde l'historique de ses commits.
 
@@ -61,7 +61,7 @@ cppcheck & 2.22.0 & Suit les valeurs dans le code (data-flow analysis) & Out-of-
 GCC \texttt{-fanalyzer} & 16.2.0 & Parcourt les chemins d'exécution & Double free, use-after-free, fuites, null pointer dereferences & Ni sound ni complete, selon sa documentation \\
 Clang Static Analyzer & 23.1.6 & Parcourt les chemins d'exécution & Mémoire, null pointer dereferences, division par zéro & 2 pour 13 vrais dans CASTLE \\
 Infer & 1.3.0 & Trois checkers, voir~\ref{sec:infer} & Mémoire, code mort, deadlocks & Selon le checker \\
-ESBMC & 8.8 & Bounded model checking & Débordements, null pointer dereferences, fuites, overflows & 32 pour 53 vrais dans CASTLE \\
+ESBMC & 8.8 & Bounded model checking & Débordements mémoire, null pointer dereferences, fuites, overflows arithmétiques & 32 pour 53 vrais dans CASTLE \\
 Frama-C EVA & 33.0 & Interprétation abstraite, sound & Les erreurs à l'exécution qu'il modélise & Élevés : signale tout ce qu'il ne peut pas exclure \\
 \bottomrule
 \end{tabular}
@@ -79,8 +79,8 @@ l'outil.
 
 \subsection{Les checkers d'Infer}\label{sec:infer}
 
-Infer~\cite{infer} tourne avec trois checkers, chacun activé par son option. Sa documentation les donne tous les
-trois pour C/C++/ObjC.
+Infer~\cite{infer} tourne avec trois checkers, chacun activé par son option et séparé au parsing
+(\fichier{harness/normalize.py}). Sa documentation les donne tous les trois pour C/C++/ObjC.
 \begin{itemize}
   \item \textbf{Pulse} (\texttt{-{}-pulse}) : null pointer dereferences, use-after-free, fuites
   (\texttt{MEMORY\_LEAK\_C}), valeurs non initialisées. Pulse ne signale une erreur que si elle se produit quelles
@@ -136,7 +136,7 @@ trois pour C/C++/ObjC.
 \end{scope}
 \node[tab] at (box.north) {Une exécution du harness sur un programme};
 \end{tikzpicture}
-\par\smallskip{\small Le harness tel que dessiné le 26 novembre. Au plus 2 allers-retours entre verifier et checker par bug.}
+\par\smallskip{\small Le harness tel que dessiné le 26 novembre. Au plus 2 passages verifier/checker par bug (1 \texttt{retry}).}
 \end{figure}
 
 \subsection{Un agent par tâche}
@@ -153,8 +153,8 @@ ne partage ni contexte ni historique avec les autres.
   répond \texttt{confirmed}, \texttt{not\_triggered} ou \texttt{refuted}. Pour les CWE sans effet visible
   à l'exécution, comme une injection SQL ou un mot de passe en dur, son prompt lui demande de le dire et de
   juger sur le code.
-  \item \fichier{agents/checker.md} reçoit le bug, le verdict du verifier et la sortie brute de son dernier
-  lancement, telle que le harness l'a enregistrée. Il ne voit pas le raisonnement du verifier. Il répond
+  \item \fichier{agents/checker.md} reçoit le bug, le verdict du verifier et les appels d'outils enregistrés
+  (compilation, arguments, entrée et sorties brutes). Il ne voit pas le raisonnement du verifier. Il répond
   \texttt{accept}, \texttt{reject} ou \texttt{retry} avec ce qu'il faudrait essayer.
   \item \fichier{agents/writer.md} écrit \texttt{REPORT.md} à partir des bugs acceptés et des rejets. Il ne
   change aucun résultat, et c'est la première étape que je coupe si le temps manque.
@@ -165,7 +165,7 @@ tourné, pas sur ce que le verifier en dit.
 
 \subsection{La boucle agentique}
 
-La boucle tient dans \fichier{harness/loop.py}, une centaine de lignes sans framework. Pour un agent :
+La boucle tient dans \fichier{harness/loop.py}, environ 150 lignes sans framework. Pour un agent :
 \begin{enumerate}
   \item Le harness envoie au serveur de modèle le prompt de l'agent, la tâche et la liste de ses outils.
   \item Le modèle répond par du texte ou demande un outil, avec ses arguments en JSON.
@@ -176,8 +176,8 @@ La boucle tient dans \fichier{harness/loop.py}, une centaine de lignes sans fram
 \end{enumerate}
 La boucle externe est dans \fichier{harness/pipeline.py}. Quand le checker répond \texttt{retry}, son objection
 repart au verifier, qui relance sa propre boucle. Au deuxième \texttt{retry}, le bug est rejeté. Une réponse qui
-n'est pas le JSON attendu compte comme vide. Chaque appel au modèle est enregistré avec ses tokens, son temps et
-les sorties des outils.
+n'est pas le JSON attendu compte comme vide. Chaque appel au modèle est enregistré avec ses tokens, son temps,
+son motif d'arrêt, la température et les sorties des outils.
 
 \subsection{Modèles}
 
@@ -206,7 +206,8 @@ CrashBench et SWE-bench, envisagés dans la version précédente, sont écartés
 \section{Protocole}\label{sec:proto}
 
 \begin{itemize}
-  \item \emph{Analyseurs} : l'union des huit exécutions, une ligne comptée une fois, puis chaque outil seul.
+  \item \emph{Analyseurs} : l'union des huit exécutions, une ligne comptée une fois, puis chaque outil et chaque
+  checker d'Infer seuls.
   \item \emph{LLM seul} : le prompt et le format de réponse de l'article CASTLE, sans outil.
   \item \emph{LLM + harness} : le harness complet. Le score est calculé après le triage, après le verifier et
   après le checker, ce qui donne l'apport de chaque agent avec une seule exécution.
@@ -214,25 +215,26 @@ CrashBench et SWE-bench, envisagés dans la version précédente, sont écartés
 
 \begin{itemize}
   \item Mesures : pour chaque condition et chaque modèle, le temps total, les tokens de prompt et de réponse
-  relevés par \texttt{llama-server}, le nombre de bugs trouvés et de faux positifs, le score CASTLE, la precision
-  et le recall avec un intervalle de Wilson à 95\,\%. Un test de McNemar exact compare les deux conditions avec
-  modèle.
-  \item Ordre : d'abord un programme par CWE (25 programmes) pour mesurer temps et tokens, puis les 250 si le
+  relevés par \texttt{llama-server}, les réponses invalides, le nombre de bugs trouvés et de faux positifs, le
+  score CASTLE, la precision et le recall avec un intervalle de Wilson à 95\,\%. Un test de McNemar exact
+  compare les deux conditions avec modèle.
+  \item Ordre : d'abord un pilote stratifié de 25 programmes (un par CWE, 15 vulnérables et 10 sains) pour mesurer
+  temps, tokens et comparer température 0 aux réglages par défaut de \texttt{llama-server}, puis les 250 si le
   temps le permet.
   \item Contamination : CASTLE est public, donc un modèle a pu le voir à l'entraînement. Ce biais touche les
   conditions avec modèle mais pas les analyseurs.
-  \item Variance : chaque condition tourne une fois. Une seconde exécution du harness sur les 25 programmes
-  mesure l'écart entre deux exécutions.
+  \item Variance : sur les 25 programmes du pilote, une seconde exécution aux réglages par défaut mesure l'écart
+  entre deux passages, face au passage déterministe à température 0.
 \end{itemize}
 
-\section{État au 26 novembre et calendrier}
+\section{État au 27 novembre et calendrier}
 
 Ce qui existe : l'image des analyseurs et son test (\fichier{analyzers/test.sh}, les huit exécutions finissent),
-la normalisation de leurs rapports (\fichier{harness/normalize.py}), le score CASTLE, la boucle, les deux outils, les
-quatre agents et le pipeline. Les tests de \fichier{tests/test_harness.py} tournent sans GPU : la boucle face à un
-serveur qui rejoue des réponses écrites à l'avance, et le pipeline avec ses allers-retours. Les deux outils ont
-tourné une fois sur un vrai programme de CASTLE. Aucun modèle n'a encore tourné, et \fichier{scripts/serve.sh} n'est
-pas encore testé.
+la normalisation de leurs rapports (\fichier{harness/normalize.py}), le score CASTLE, la boucle, les deux outils,
+les quatre agents et le pipeline, relus ligne par ligne le 27 novembre. Les tests de \fichier{tests/test_harness.py}
+tournent sans GPU : la boucle face à un serveur qui rejoue des réponses écrites à l'avance, et le pipeline avec ses
+allers-retours. Les deux outils ont tourné une fois sur un vrai programme de CASTLE. Aucun modèle n'a encore tourné,
+et \fichier{scripts/serve.sh} n'est pas encore testé.
 
 Début décembre : premier passage sur 25 programmes et mesure des tokens. Mi-décembre : les 250 programmes.
 Début janvier : tableaux et rédaction. Rendu visé fin janvier 2027 : un rapport d'au moins une douzaine de pages,
