@@ -19,10 +19,11 @@ fi
 # Flags from c-secure-build's llm-eval/harness/serve.sh: 16k context, q8 KV
 # cache, one slot, no RAM prompt cache. --jinja applies the model's chat
 # template, which is what turns tool calls into the OpenAI format.
+reasoning="${REASONING_FORMAT:-auto}"
 MSYS_NO_PATHCONV=1 docker run -d --rm --name llama --gpus all -p 127.0.0.1:8080:8080 \
     -v "$models:/models:ro" "$image" -m "/models/$file" --alias "$1" \
     -ngl 99 -c 16384 --jinja -fa on -ctk q8_0 -ctv q8_0 -np 1 --cache-ram 0 \
-    --reasoning-format deepseek --host 0.0.0.0 --port 8080 > /dev/null
+    --reasoning-format "$reasoning" --host 0.0.0.0 --port 8080 > /dev/null
 
 for _ in $(seq 1 180); do
     if curl -sf http://127.0.0.1:8080/health > /dev/null; then

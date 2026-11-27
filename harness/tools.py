@@ -3,12 +3,17 @@ on the program's workspace; the model only sees what they return."""
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from pathlib import Path
 
 from harness import docker
 
 SANITIZE = "-g -fno-omit-frame-pointer -fsanitize=address,undefined"
+# LeakSanitizer needs SYS_PTRACE under default Docker seccomp; disabled by
+# default so clean exits do not abort with an LSan ptrace error.
+ASAN_OPTIONS = os.environ.get("HARNESS_ASAN_OPTIONS", "detect_leaks=0:abort_on_error=0")
+UBSAN_OPTIONS = os.environ.get("HARNESS_UBSAN_OPTIONS", "print_stacktrace=1:halt_on_error=1")
 RUN_TIMEOUT = 10
 
 BUILD_SPEC = {
@@ -42,11 +47,14 @@ def make_tools(workdir: Path, test: dict) -> dict[str, tuple[dict, Callable[...,
         return f"exit {code}\n{out}"
 
     def run_input(args: list, stdin: str) -> str:
+        if not isinstance(args, list):
+            return "error: args must be a list of strings"
         if not (workdir / binary).exists():
             return "error: no build, call build_san first"
         (workdir / "stdin.txt").write_text(str(stdin), encoding="utf-8")
         # The arguments reach "$@" as separate argv entries, never through a shell parse.
-        script = f'cd /work && timeout {RUN_TIMEOUT} ./{binary} "$@" < stdin.txt'
+        script = (f'cd /work && ASAN_OPTIONS="{ASAN_OPTIONS}" UBSAN_OPTIONS="{UBSAN_OPTIONS}" '
+                  f'timeout {RUN_TIMEOUT} ./{binary} "$@" < stdin.txt')
         argv = ["sh", "-c", script, "_"]
         for arg in args:
             argv.append(str(arg))

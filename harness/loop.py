@@ -16,6 +16,7 @@ import json
 import os
 import re
 import time
+import urllib.error
 import urllib.request
 from collections.abc import Callable
 from pathlib import Path
@@ -23,13 +24,16 @@ from pathlib import Path
 URL = os.environ.get("HARNESS_URL", "http://127.0.0.1:8080") + "/v1/chat/completions"
 AGENTS = Path(__file__).resolve().parent.parent / "agents"
 MAX_TOKENS = 8192
-JSON_BLOCK = re.compile(r"```(?:json)?\s*(?P<json>[\[{][\s\S]*[\]}])\s*```")
+FENCED_BLOCK = re.compile(r"```(?:json)?\s*([\s\S]*?)```")
 
 
-def chat(messages: list[dict], tools: list[dict] | None = None) -> dict:
-    body = {"messages": messages, "max_tokens": MAX_TOKENS}
+def chat(messages: list[dict], tools: list[dict] | None = None,
+         temperature: float | None = None) -> dict:
+    body: dict = {"messages": messages, "max_tokens": MAX_TOKENS}
     if tools:
         body["tools"] = tools
+    if temperature is not None:
+        body["temperature"] = temperature
     request = urllib.request.Request(URL, data=json.dumps(body).encode(),
                                      headers={"Content-Type": "application/json"})
     start = time.monotonic()
@@ -50,23 +54,51 @@ def load_agent(name: str) -> dict:
         key, value = raw.split(":", 1)
         agent[key.strip()] = value.strip()
     if isinstance(agent["tools"], str):
-        agent["tools"] = [t.strip() for t in agent["tools"].split(",") if t.strip()]
+        tools_list = []
+        for t in agent["tools"].split(","):
+            if t.strip():
+                tools_list.append(t.strip())
+        agent["tools"] = tools_list
     agent["max_turns"] = int(agent["max_turns"])
     return agent
 
 
 def parse_json(text: str):
-    """The JSON answer, fenced or bare; None when there is none."""
-    match = JSON_BLOCK.search(text)
-    candidate = match.group("json") if match else text.strip()
-    try:
-        return json.loads(candidate)
-    except json.JSONDecodeError:
-        return None
+    """The JSON answer: last valid fenced block, bare JSON, or last JSON value
+    embedded after prose; None when nothing parses."""
+    blocks = FENCED_BLOCK.findall(text)
+    for block in reversed(blocks):
+        try:
+            return json.loads(block.strip())
+        except json.JSONDecodeError:
+            pass
+    stripped = text.strip()
+    if stripped:
+        try:
+            return json.loads(stripped)
+        except json.JSONDecodeError:
+            pass
+    decoder = json.JSONDecoder()
+    found = None
+    idx = 0
+    while idx < len(text):
+        if text[idx] not in "{[":
+            idx += 1
+            continue
+        try:
+            value, end = decoder.raw_decode(text, idx)
+        except json.JSONDecodeError:
+            idx += 1
+            continue
+        found = value
+        idx = end
+        if not text[end:].strip():
+            return value
+    return found
 
 
 def run_agent(name: str, task: str, tools: dict[str, tuple[dict, Callable[..., str]]],
-              trace: list[dict]) -> str:
+              trace: list[dict], temperature: float | None = None) -> str:
     """Runs agent `name` on `task` and returns its final text. tools maps a
     tool name to (OpenAI function spec, Python function); the agent only
     gets the ones its header lists. Every model call is appended to trace."""
@@ -74,19 +106,37 @@ def run_agent(name: str, task: str, tools: dict[str, tuple[dict, Callable[..., s
     specs = []
     for tool in agent["tools"]:
         specs.append({"type": "function", "function": tools[tool][0]})
-    messages = [{"role": "system", "content": agent["prompt"]}, {"role": "user", "content": task}]
+    messages: list[dict] = [{"role": "system", "content": agent["prompt"]}, {"role": "user", "content": task}]
     for turn in range(1, agent["max_turns"] + 1):
         last = turn == agent["max_turns"]
         if last and specs:
-            messages.append({"role": "user", "content": "No more tool calls. Give your final answer now."})
-        reply = chat(messages, None if last else specs)
-        message = reply["choices"][0]["message"]
+            notice = "No more tool calls. Give your final JSON answer now."
+            if messages[-1]["role"] == "tool":
+                # Keep tool -> assistant order for strict Jinja chat templates.
+                messages[-1]["content"] = f"{messages[-1]['content']}\n\n[{notice}]"
+            else:
+                messages.append({"role": "user", "content": notice})
+        try:
+            reply = chat(messages, None if last else specs, temperature=temperature)
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")[:300]
+            trace.append({"agent": name, "turn": turn, "seconds": 0.0, "model": None,
+                          "temperature": temperature, "prompt_tokens": 0, "completion_tokens": 0,
+                          "error": f"HTTP {exc.code}: {detail}", "calls": []})
+            return ""
+        choice = reply["choices"][0]
+        message = choice["message"]
         calls = message.get("tool_calls") or []
+        usage = reply.get("usage") or {}
         record = {"agent": name, "turn": turn, "seconds": reply["seconds"], "model": reply.get("model"),
-                  "prompt_tokens": reply["usage"]["prompt_tokens"],
-                  "completion_tokens": reply["usage"]["completion_tokens"], "calls": []}
+                  "temperature": temperature, "finish_reason": choice.get("finish_reason"),
+                  "prompt_tokens": usage.get("prompt_tokens", 0),
+                  "completion_tokens": usage.get("completion_tokens", 0), "calls": []}
+        reasoning = message.get("reasoning_content")
+        if reasoning:
+            record["reasoning"] = reasoning
         trace.append(record)
-        if not calls:
+        if not calls or last:
             return message.get("content") or ""
         messages.append({"role": "assistant", "content": message.get("content") or "", "tool_calls": calls})
         for call in calls:
